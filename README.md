@@ -6,6 +6,7 @@ An agent skill that simplifies, cleans up and refactors existing code in any mai
 
 ## Install / 安装
 
+- ClawHub: https://clawhub.ai/linkxzhou/simplify-code-all
 - SkillHub: https://skillhub.cn/skills/user_16e7431e/simplify-code-all
 - GitHub:
 
