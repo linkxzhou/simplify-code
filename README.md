@@ -6,6 +6,9 @@ An agent skill that simplifies, cleans up and refactors existing code in any mai
 
 ## Install / 安装
 
+- SkillHub: https://skillhub.cn/skills/user_16e7431e/simplify-code-all
+- GitHub:
+
 ```bash
 git clone --depth 1 https://github.com/linkxzhou/simplify-code.git ~/.claude/skills/simplify-code
 ```
