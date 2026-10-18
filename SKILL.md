@@ -1,12 +1,66 @@
 ---
 name: simplify-code
-description: Simplify, clean up, and refactor existing code in any mainstream language (JS/TS, Python, Java, Go, Rust, C#, C/C++, PHP, SQL, Bash, and more) while preserving behavior and public APIs. Use whenever the user asks to simplify, tidy, refactor, de-nest, deduplicate, remove dead code, shorten code without changing behavior, polish recently written code, modernize syntax safely, or fix code smells (god class, feature envy, primitive obsession), or pastes code saying "make this cleaner" — including 简化代码, 精简代码, 重构, 代码重构, 优化代码可读性, 整理代码, 代码整洁, 去除重复代码, 减少嵌套, 代码坏味道, 这段代码太乱了. Not for performance tuning, bug fixes, new features, translating between languages, configuring linters/formatters, writing tests as the main task, general code review or security audits (read-only simplification assessments are supported), or prose editing (性能优化、修 bug、新功能、代码翻译、配置 lint、写单测、代码审查、文章精简).
+description: Simplify, clean up, or refactor existing code in any language (JS/TS, Python, Java, Go, Rust, C#, C/C++, PHP, SQL, Bash…) while preserving behavior and public APIs. Use whenever the user asks to simplify, tidy, clean up, refactor, de-nest, deduplicate, remove dead code, modernize syntax (const/let, ===, ??, streams, async/await, for..of), rewrite a function more concisely, polish recently written code, fix code smells (god class, feature envy, primitive obsession), or "make this cleaner" — including 简化代码, 精简代码, 重构, 整理代码, 代码整洁, 去除重复代码, 减少嵌套, 代码坏味道, 这段代码太乱了; read-only simplification assessments too. Not for performance tuning, bug fixes, new features, porting between languages, lint config, writing tests, security review, or prose (性能优化、修 bug、新功能、代码翻译、写单测、文章精简).
 license: MIT
+metadata:
+  version: "1.1.0"
 ---
+
+> This file is longer than one read (~4,000 characters). Keep reading in chunks until the end (Golden rules, Output format, Quick checklist, References) before editing.
 
 # Simplify Code
 
-Make code easier to read and change without changing what it does. The target is the *smallest readable equivalent*: fewer concepts, duplicated knowledge, nesting levels, and pointless hops — not the fewest characters. Small safe steps beat big rewrites, because each step can be checked on its own.
+Make code easier to read and change without changing what it does: the *smallest readable equivalent*, in small steps that are each checked. Non-negotiable (details in Golden rules below): preserve behavior and public APIs; claim only checks you ran; if a command, delete, or tool is denied, report it and leave it — don't route around it with another tool or script.
+
+## Workflow
+
+Run the steps in order. Step labels are for your tracking; the user sees only the Step 7 report.
+
+### Step 0 — Mode and scope
+- **Do:** fix the scope (the code the user named; else this session's changes or the working diff); read `AGENTS.md`/`CLAUDE.md`, lint/formatter config, neighbouring code.
+- **Output:** mode + in-scope files/functions + language(s) (open that section of `references/languages.md`).
+- **Decision:** pasted snippet, no repo → Steps 1–7, verifying by reasoning or a tiny script · read-only assessment → **R-branch**, no edits · repository code → Steps 1–7 in place (`references/assessment.md` if large or tools are limited) · user asked for a risky change (`||`→`??`, `===` everywhere, `Promise.all`) → handle in Step 3.
+
+### Step 1 — Understand the contract
+- **Do:** state inputs, outputs, side effects, errors, edge cases; find the public surface (`export`, `pub`, `public`, `__all__`, callers).
+- **Output:** a 1–2 sentence contract + public symbols you must not change.
+- **Done when:** for every in-scope function you know who calls it and what it promises.
+
+### Step 2 — Baseline and safety net
+- **Do:** run existing tests/lint/build/type checker **before any edit**; with no tests, write a throwaway differential check (old vs new on edge inputs) outside the project or delete it afterwards. Edge inputs: `0`, `''`, `false`, null/undefined, NaN, negatives, fractions, empty/duplicate collections, duplicate keys, boxed values (`new String('x')`), sync throws.
+- **Output:** baseline record (commands + results, or "not runnable: why") + edge-input list.
+- **Done when:** Step 6 has something to compare against.
+
+### Step 3 — Plan by payoff and risk
+- **Do:** list candidates: dead code → nesting → redundancy → duplication → naming → conditionals → structure (`references/rules.md` §19–20, language section). Tag each **apply** (private, provably equivalent), **propose** (changes behavior/API) or **skip**. For a risky user request, apply the safe parts and give a concrete input that would change for each unsafe part. If the requested form can't be made exactly equivalent, apply the closest equivalent form instead (e.g. `collect(HashMap::new, (m, u) -> m.put(k, v), Map::putAll)` when `toMap` would reject null values or duplicates) or keep the original — never ship a version with a known differing input, even with a note.
+- **Output:** ordered, tagged plan.
+- **Decision:** nothing to apply or propose → **Already simple exit** (change nothing, go to Step 7). Else → Step 4.
+
+### Step 4 — Apply one transformation
+- **Do:** make exactly one behavior-preserving edit from the plan.
+- **Output:** one small edit.
+- **Done when:** complete and inside scope → Step 5.
+
+### Step 5 — Check that transformation
+- **Do:** run fast checks (affected tests, type checker after any type change); review the lines against `references/behavior-traps.md`: *which input makes old and new differ?*
+- **Output:** pass, or the differing input.
+- **Decision:** pass → Step 4 for the next item · any known differing input (found by a check *or* by reasoning) = fail → revert only this edit, move it to *propose* with the input · plan done → Step 6.
+
+### Step 6 — Final verification
+- **Do:** re-run the Step 2 set and compare with the baseline; unavailable tools = partial verification, said plainly.
+- **Output:** each command + result; what wasn't run and why.
+- **Decision:** new failure vs baseline → revert the causing step, re-run · otherwise → Step 7.
+
+### Step 7 — Report
+- **Do:** write the Output format below in the user's language, then the diff or code. Call out semantics the user might not expect that you **kept** (e.g. "sync throws from `run()` are still caught by `try`/`await`", "`||` kept: `0`/`''` fall back to defaults").
+- **Output:** the final message.
+- **Done when:** every "verified" matches a command you ran; every *propose* item is under Needs approval with its input; denied commands are listed.
+
+### R-branch — read-only assessment (no step may mutate the checkout; see `references/assessment.md`)
+- **R1 Scope:** name sampled files/revision and exclusions. Done when the sample is named; no repo-wide claim from a sample.
+- **R2 Evidence:** Step 1 for the sample; inspect test commands/CI without modifying anything. Done when each area has callers/tests or "unknown".
+- **R3 Proposals:** Step 3 with every item a proposal (priority, risk, rule, unsafe input). Nothing worth proposing → report already simple.
+- **R4 Report:** assessment.md format with Scope and Verification lines stating nothing was edited. Done when every proposal has location, payoff, risk, evidence.
 
 ## Golden rules
 
@@ -19,62 +73,7 @@ Rules 1–2 outrank everything else in this skill, including the checklists in `
 5. **Don't over-engineer.** Add abstractions only when they remove real duplication or complexity now; speculative ones are complexity you must maintain. Prefer deleting complexity to relocating it, and deep modules to many shallow helpers.
 6. **Respect scope.** Touch the code the user named; if none, the code changed in this session or the working diff. Unrequested edits elsewhere inflate review cost and may collide with others' work, so list out-of-scope smells as suggestions instead.
 7. **Report verification honestly.** Claim only checks you actually ran, with the command and result. If something wasn't run, say "not run" and why. A false "verified" leads the user to merge broken code — worse than admitting uncertainty.
-
-## Workflow
-
-Run the steps in order. Each step names what to do, what it produces, and when it is done. Step labels are for your own tracking; the user sees only the report from Step 7.
-
-### Step 0 — Mode and scope
-- **Do:** pick the mode and fix the scope (Golden rule 6): the code the user named; if none, the code changed in this session or the working diff. Read applicable `AGENTS.md` / `CLAUDE.md`, lint/formatter config, and neighbouring code (Golden rule 3).
-- **Output:** mode + list of in-scope files/functions + the language(s), so you can open the right section of `references/languages.md`.
-- **Decision:**
-  - **Pasted snippet, no repo** → run Steps 1–7; Steps 2 and 6 run by reasoning (or a tiny script if tools exist), and the report says verification was by reasoning.
-  - **Read-only simplification assessment** (analyze, assess, report without edits) → go to the **R-branch**. Don't edit source, add tests, apply demonstration patches, create branches, commit, or push. Write report files only if requested. This is not a general correctness/security audit.
-  - **Repository code** → Steps 1–7 in place. Also read `references/assessment.md` when the repository is large or verification is constrained.
-  - **User asked for a specific risky change** (e.g. "replace `||` with `??`", "strict comparisons everywhere", "use `Promise.all`") → handle it in Step 3.
-
-### Step 1 — Understand the contract
-- **Do:** state inputs, outputs, side effects, errors, and edge cases; identify the public surface (`export`, `pub`, `public`, `__all__`, package entry points, callers in other modules).
-- **Output:** a 1–2 sentence contract and the list of public symbols you must not change.
-- **Done when:** for every in-scope function you can say who calls it and what it promises.
-
-### Step 2 — Baseline and safety net
-- **Do:** run the existing tests, linters, build, and type checker and record the results. For risky repo changes without coverage, add small characterization tests first; if impossible, stay conservative and say so. List the edge inputs that matter here: `0`, `''`, `false`, null/None/nil/undefined, NaN, negatives, empty and duplicate collections, duplicate keys, ties, unknown enum values, inherited properties, paths with spaces, size limits.
-- **Output:** a baseline record (commands + pass/fail/warning counts, or "not runnable: <why>") and the edge-input list.
-- **Done when:** a baseline exists that Step 6 can compare against. Pre-existing failures are noted as baseline, not caused by you.
-
-### Step 3 — Plan by payoff and risk
-- **Do:** list candidate changes in this order: dead code and noise → guard clauses/nesting → redundant branches and temporaries → duplication → naming and magic values → conditionals → structure/classes. Use `references/rules.md` for the full catalogue, §19 for the smell → refactoring map and §20 for the minimum-code procedure, plus the language section from `languages-tier1.md` / `languages-tier2.md`. Tag each candidate **apply** (private, provably equivalent), **propose** (touches public API or behavior: Golden rules 1–2), or **skip** (churn, out of scope, lint conflict).
-- **Risky user request:** apply the safe parts; for each unsafe part, tag it propose or skip and note a concrete input whose result would change.
-- **Output:** an ordered plan with tags.
-- **Decision:** no candidate tagged *apply* and none worth proposing → **Already simple exit**: change nothing (or only trivially safe bits), go to Step 7 and explain why the code is already minimal. Inventing churn wastes review time and risks regressions. Otherwise → Step 4.
-
-### Step 4 — Apply one transformation
-- **Do:** take the next *apply* item and make exactly one behavior-preserving change (delete, inline, extract, de-nest, merge branches, use a resource construct), using the language idiom from Step 0's section.
-- **Output:** one small edit.
-- **Done when:** the edit is complete and touches nothing outside scope. Then go straight to Step 5.
-
-### Step 5 — Check that transformation
-- **Do:** run the fast checks available (affected tests, type checker — always after changing types, e.g. removing `any`, adding generics, narrowing nullability). Review the rewritten lines against `references/behavior-traps.md` and ask: *which concrete input makes old and new differ?*
-- **Output:** pass, or the differing input / failing check.
-- **Decision:** pass → next *apply* item back in Step 4. Fail → revert only that step's own edits (never reset unrelated user changes), move the item to *propose* with the differing input, then continue with Step 4. Plan exhausted → Step 6.
-
-### Step 6 — Final verification
-- **Do:** re-run the full baseline set from Step 2 (tests, linters, build, type checker) and compare failures/warnings with the baseline. Missing or old tools, heavy builds, and untested platforms need explicitly partial verification, not a success claim; follow `references/assessment.md`.
-- **Output:** each command run + result, what was not run and why, and edge inputs checked by reasoning.
-- **Decision:** a new failure or warning versus baseline → find the step that caused it, revert that step (Step 5 rule), and re-run. Equal or better than baseline → Step 7.
-
-### Step 7 — Report
-- **Do:** write the report in the user's language using the Output format below, then show the diff or the rewritten code. For the Already simple exit, state why the code is already minimal and stop. Keep it short.
-- **Output:** the final message.
-- **Done when:** every "verified" claim matches a command actually run in Step 5/6 (Golden rule 7), and every *propose* item appears under Needs approval with its differing input.
-
-### R-branch — read-only simplification assessment
-Use `references/assessment.md` for scope, priorities, and reporting. No step may mutate the checkout.
-- **R1 Scope and sample:** state the mode and which files/modules (and revision, if known) you sample and which you exclude. Output: the scope line. Done when the sample is named; no repository-wide claim from a sample.
-- **R2 Evidence:** do Step 1 for the sampled code; for Step 2, inspect existing test commands, CI config, and available evidence. Run only commands that don't modify the checkout; don't add tests. Output: contract notes + evidence list. Done when each candidate area has its callers/tests identified or marked unknown.
-- **R3 Proposals:** do Step 3, but every item becomes a proposal with priority and risk ratings (assessment.md "Priorities, risk, and evidence"), the rule it applies, and any input that would make it unsafe. Output: prioritized proposal list. Decision: nothing worth proposing → report the code as already simple.
-- **R4 Report:** use assessment.md's report format (or the Output format with Changes replaced by proposals); include Scope and Verification lines saying what was inspected and that nothing was edited. Done when every proposal has location, payoff, risk, and evidence.
+8. **Denied means stop.** If a command, file deletion, or tool call is denied or blocked, don't achieve the same effect another way (e.g. `os.remove` after `rm` is denied). Leave it, and list it in the report so the user can decide.
 
 ## Output format
 
@@ -102,6 +101,8 @@ Apply freely to private/local code; at public boundaries only propose.
 - **Name** intent; replace magic values with named constants.
 - **Conditionals:** extract complex predicates; avoid double negatives; use lookup tables or polymorphism for repeated type switches (unknown-key behavior must match).
 - **Resources/errors:** `with`/`using`/`defer`/RAII/try-with-resources when cleanup order and exceptions stay equivalent; never swallow errors that were previously raised.
+- **Equality:** `==` → `===` is not free in JS/TS: `new String('desc') == 'desc'` is true, `=== 'desc'` is false; `null == undefined`; `'1' == 1`. Keep loose equality (or prove the types) and say so.
+- **Async/errors:** keep `try { await f() }` loops when `f` may throw synchronously — the sync throw is caught there; `items.map(f)` + `Promise.all` throws it outside the `try`. Note this in the report.
 - **Structure:** split god functions/classes along real responsibilities; inline shallow helpers; keep deep modules.
 
 ## References

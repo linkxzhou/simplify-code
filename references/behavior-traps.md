@@ -21,7 +21,7 @@ Indexing & iteration · Sorting & ordering · Collections & maps · Formatting &
 ## Collections & maps
 - **Java `Collectors.toMap`** replacing a `put` loop:
   - duplicate keys throw `IllegalStateException` (the loop kept the last value) → pass a merge function `(a, b) -> b`;
-  - **null values throw `NullPointerException`** (`HashMap.merge` rejects null) — the merge function doesn't help; keep the loop or filter nulls deliberately;
+  - **null values throw `NullPointerException`** (`HashMap.merge` rejects null) — the merge function doesn't help. Keep the loop, or use the equivalent stream form `collect(HashMap::new, (m, x) -> m.put(key(x), value(x)), Map::putAll)` (keeps nulls, last wins, mutable `HashMap`); filtering nulls out is a behavior change (propose only);
   - the result type is unspecified (currently `HashMap`) → use the 4-arg overload with `LinkedHashMap::new`/`TreeMap::new` if order or type mattered.
 - Java `Stream.toList()` is unmodifiable; `Collectors.toList()`/`toSet()` give no mutability guarantee; `List.of`/`Map.of` reject nulls and duplicates.
 - Java `groupingBy` rejects null keys; `Collectors.joining` on nulls prints `"null"`.
@@ -39,7 +39,7 @@ Indexing & iteration · Sorting & ordering · Collections & maps · Formatting &
 
 ## Truthiness, equality & defaults
 - `x || d` → `x ?? d` / default params: `0`, `''`, `false`, `NaN` stop falling back (default params only replace `undefined`).
-- `==` → `===`: String objects, `null == undefined`, number vs numeric string.
+- `==` → `===`: String objects (`new String('desc') == 'desc'` is true, `===` is false), `null == undefined`, number vs numeric string.
 - Python `== True` → `if x:`: `"yes"`, `[1]`, `2` become true; `1`/`1.0` were already true. `if x is not None` vs `if x`: `{}`, `0`, `''` differ.
 - **PHP loose → strict changes results:**
   - `in_array($x, $arr)` / `array_search` / `array_keys($a, $v)` are loose by default: `in_array('1', [1])`, `in_array('abc', [0])` (PHP < 8), `in_array(null, [0])` are true. Adding `true` as the strict flag changes matches unless types are already identical.
@@ -56,7 +56,7 @@ Indexing & iteration · Sorting & ordering · Collections & maps · Formatting &
 - JS `['1','2','3'].map(parseInt)` → `[1, NaN, NaN]` (index passed as radix).
 
 ## Async & ordering
-- Sequential `await` in a loop → `Promise.all(items.map(…))`: tasks start **concurrently** (order of side effects, DB writes, migrations changes), all run even after one fails (no stop at first failure), and the first rejection rejects the whole while others keep running. `Promise.allSettled` changes the result shape. Keep the loop when order or fail-fast matters; it is a performance change, out of this skill's scope.
+- Sequential `await` in a loop → `Promise.all(items.map(…))`: tasks start **concurrently** (order of side effects, DB writes, migrations changes), all run even after one fails (no stop at first failure), and the first rejection rejects the whole while others keep running. `Promise.allSettled` changes the result shape. A synchronous throw from the task function is caught by `try { await f() }` in the loop but escapes from `.map(f)` before `Promise.all` runs — mention that the loop keeps catching it. Keep the loop when order or fail-fast matters; it is a performance change, out of this skill's scope.
 - `asyncio.gather` behaves the same way; Python `return_exceptions` changes the result.
 - Callback → promise/async, or sync → async, changes the API and timing.
 - Removing an `await` before `return` inside `try` loses the catch for that rejection.

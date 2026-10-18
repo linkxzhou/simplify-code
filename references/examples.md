@@ -767,14 +767,14 @@ Each branch is a distinct contract (error, empty → `nil`, data). No helper, wr
 ### C10. `put` loop → `Collectors.toMap` (Java)
 ```java
 // Original
-Map<String, User> byEmail = new HashMap<>();
-for (User u : users) {
-    byEmail.put(u.getEmail(), u);
+Map<String, Product> bySku = new HashMap<>();
+for (Product p : catalog) {
+    bySku.put(p.getSku(), p);
 }
 // Tempting
-Map<String, User> byEmail = users.stream().collect(Collectors.toMap(User::getEmail, u -> u));
+Map<String, Product> bySku = catalog.stream().collect(Collectors.toMap(Product::getSku, p -> p));
 ```
-Duplicate emails: the loop keeps the last user, `toMap` throws `IllegalStateException`. A null map value would throw `NullPointerException` (not here since `u` is non-null, but `toMap(User::getEmail, User::getNickname)` with a null nickname would). Safe only as `toMap(User::getEmail, u -> u, (a, b) -> b, HashMap::new)` *and* if values are never null — at which point the loop is no longer more verbose. Prefer keeping the loop.
+Duplicate SKUs: the loop keeps the last product, `toMap` throws `IllegalStateException`. A null map value would throw `NullPointerException` (not here since `p` is non-null, but `toMap(Product::getSku, Product::getLabel)` with a null label would). `toMap` also doesn't promise a mutable `HashMap`. Safe only as `toMap(Product::getSku, p -> p, (a, b) -> b, HashMap::new)` *and* if values are never null — at which point the loop is no longer more verbose. Prefer keeping the loop.
 
 ### C11. `for..in` and default `sort()` (TS)
 ```ts
@@ -811,15 +811,15 @@ Apply only where types are guaranteed identical; for the rest, report each with 
 ### C13. Sequential `await` → `Promise.all` (TS)
 ```ts
 // Original
-export async function runAll(migrations: Migration[]) {
-  for (const m of migrations) {
-    await m.up();
+export async function deployAll(services: Service[]) {
+  for (const svc of services) {
+    await svc.deploy();
   }
 }
 // Tempting
-await Promise.all(migrations.map(m => m.up()));
+await Promise.all(services.map(svc => svc.deploy()));
 ```
-Migrations then run concurrently (order not guaranteed) and continue after one fails. That's a performance/behavior change, not a simplification — keep the loop and say so.
+Deploys then run concurrently (order not guaranteed) and continue after one fails. A synchronous throw from `deploy()` also behaves differently: inside the loop (and inside any surrounding `try`) it is caught like a rejection; in `.map()` it escapes before `Promise.all` is reached. That's a behavior change, not a simplification — keep the loop and say so, including the sync-throw point.
 
 ### C14. Removing `any` without re-running the type checker (TS)
 ```ts
