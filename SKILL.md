@@ -3,7 +3,7 @@ name: simplify-code
 description: Simplify, clean up, or refactor existing code in any language (JS/TS, Python, Java, Go, Rust, C#, C/C++, PHP, SQL, Bash…) while preserving behavior and public APIs. Use whenever the user asks to simplify, tidy, clean up, refactor, de-nest, deduplicate, remove dead code, modernize syntax (const/let, ===, ??, streams, async/await, for..of), rewrite a function more concisely, polish recently written code, fix code smells (god class, feature envy, primitive obsession), or "make this cleaner" — including 简化代码, 精简代码, 重构, 整理代码, 代码整洁, 去除重复代码, 减少嵌套, 代码坏味道, 这段代码太乱了; read-only simplification assessments too. Not for performance tuning, bug fixes, new features, porting between languages, lint config, writing tests, security review, or prose (性能优化、修 bug、新功能、代码翻译、写单测、文章精简).
 license: MIT
 metadata:
-  version: "1.1.0"
+  version: "1.1.1"
 ---
 
 > This file is longer than one read (~4,000 characters). Keep reading in chunks until the end (Golden rules, Output format, Quick checklist, References) before editing.
